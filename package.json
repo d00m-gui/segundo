@@ -1,0 +1,30 @@
+{
+  "name": "segundo",
+  "version": "0.1.0",
+  "author": "Carlos Elias <hola@carloselias.cl>",
+  "description": "Segundo is a static web server and CLI utility to help design & develop the web faster",
+  "keywords": ["web", "server", "cli", "framework", "web development", "CSS3", "HTML5", "LESS", "wireframes"],
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/carloselias/segundo.git"
+  },
+  "contributors": [
+    { "name": "Alvaro Veliz", "email": "yo@alvaroveliz.cl" }
+  ],
+  "dependencies": {
+    "terraform": "0.6.0",
+    "commander": "2.0.0",
+    "connect": "2.9.0",
+    "fs-extra": "0.6.4",
+    "async": "0.2.9",
+    "mime": "1.2.11",
+    "bower": "1.2.7",
+    "prompt": "0.2.11"
+  },
+  "preferGlobal": true,
+  "bin": "bin/segundo",
+  "license": "MIT",
+  "engines": {
+    "node": ">=0.8"
+  }
+}

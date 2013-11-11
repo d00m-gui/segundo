@@ -1,0 +1,184 @@
+#!/usr/bin/env node
+
+var nodePath  = require("path"),
+    program   = require("commander"),
+    prompt    = require('prompt'),
+    fse       = require("fs-extra"),
+    bower     = require("bower"),
+    pkg       = require('../package.json'),
+    helpers   = require("../lib/helpers"),
+    segundo   = require('../lib/index');
+
+var output = function(msg){
+  var v = pkg.version
+  console.log("")
+  console.log("                                                                                                   ")
+  console.log("                                                                                                   ")
+  console.log("      ___           ___           ___           ___           ___           ___           ___      ")
+  console.log("     /\  \         /\  \         /\  \         /\__\         /\__\         /\  \         /\  \     ")
+  console.log("    /::\  \       /::\  \       /::\  \       /:/  /        /::|  |       /::\  \       /::\  \    ")
+  console.log("   /:/\ \  \     /:/\:\  \     /:/\:\  \     /:/  /        /:|:|  |      /:/\:\  \     /:/\:\  \   ")
+  console.log("  _\:\~\ \  \   /::\~\:\  \   /:/  \:\  \   /:/  /  ___   /:/|:|  |__   /:/  \:\__\   /:/  \:\  \  ")
+  console.log(" /\ \:\ \ \__\ /:/\:\ \:\__\ /:/__/_\:\__\ /:/__/  /\__\ /:/ |:| /\__\ /:/__/ \:|__| /:/__/ \:\__\ ")
+  console.log(" \:\ \:\ \/__/ \:\~\:\ \/__/ \:\  /\ \/__/ \:\  \ /:/  / \/__|:|/:/  / \:\  \ /:/  / \:\  \ /:/  / ")
+  console.log("  \:\ \:\__\    \:\ \:\__\    \:\ \:\__\    \:\  /:/  /      |:/:/  /   \:\  /:/  /   \:\  /:/  /  ")
+  console.log("   \:\/:/  /     \:\ \/__/     \:\/:/  /     \:\/:/  /       |::/  /     \:\/:/  /     \:\/:/  /   ")
+  console.log("    \::/  /       \:\__\        \::/  /       \::/  /        /:/  /       \::/__/       \::/  /    ")
+  console.log("     \/__/         \/__/         \/__/         \/__/         \/__/         ~~            \/__/     ")
+  console.log("                                                                                                   ")
+  console.log("                                                                                         "+v+"     ")
+  console.log("")
+  if(msg){
+    console.log('')
+    console.log(msg)
+    console.log('')
+  }
+}
+
+
+program
+  .version(pkg.version)
+
+program
+  .command('init [path]')
+  .description('initialize new segundo application in current directory')
+  .action(function(path, program){
+    var projectPath     = nodePath.resolve(process.cwd(), path || "")
+    var boilerplatePath = nodePath.resolve(__dirname, "..", "lib", "default")
+
+    var done = function(err){
+      console.log('initialized project at', projectPath)
+    }
+
+    fse.mkdirp(projectPath, function(err){
+      if(err) return err
+
+      fse.readdir(projectPath, function(err, contents){
+        if(err) return err
+        if(contents.length == 0){
+          fse.readdir(boilerplatePath, function(err, contents){
+            if(err) return err
+            var total = contents.length
+            var count = 0
+            contents.forEach(function(i){
+              var fromPath = nodePath.resolve(boilerplatePath, i)
+              var toPath   = nodePath.resolve(projectPath, i)
+              fse.copy(fromPath, toPath, function(err){
+                count++
+                if(count == total) done()
+              })
+            })
+          })
+        }else{
+          console.log("Sorry,", projectPath, " must be empty.")
+        }
+        var count = 0
+
+      })
+    })
+    prompt.start();
+    var property = {
+      name: 'yesno',
+      message: 'are you sure?',
+      validator: /y[es]*|n[o]?/,
+      warning: 'Must respond yes or no',
+      default: 'no'
+    }
+    prompt.get(property, function (err, result) {
+      console.log('Command-line input received:');
+      console.log(' result: ' + result.yesno);
+      if (result.yesno != 'no') {
+        console.log('Installing Perkins...');
+        bower.config.directory = path + "/vendor/";
+        command = [ 'install', 'perkins' ];
+        segundo.doBower(command);
+      }else{
+        console.log('Buuuuh! without Perkins sucks!!!');
+      }
+    })
+  })
+
+program
+  .command('server [path]')
+  .option('-p, --port <port>', 'specify port to listen on')
+  .description('start segundo server')
+  .action(function(path, program){
+    var projectPath = nodePath.resolve(process.cwd(), path || "")
+    var port        = program.port || 8000
+    segundo.server(projectPath, { port: port }, function(){
+      output("Your server is listening at http://localhost:" + port + "/")
+    })
+  })
+
+program
+  .command('multihost [path]')
+  .option('-p, --port <port>', 'specify port to listen on')
+  .description('start segundo server to host directory of segundo apps')
+  .action(function(path, program){
+    var projectPath = nodePath.resolve(process.cwd(), path || "")
+    var port        = program.port || 8000
+    segundo.multihost(projectPath, { port: port }, function(){
+      if(port == "80"){
+        var loc = "http://segundo.nu"
+      }else{
+        var loc = "http://segundo.nu:" + port
+      }
+      output("Your server is hosting multiple projects at " + loc)
+    })
+  })
+
+program
+  .command('compile [projectPath] [outputPath]')
+  .option('-o, --output <path>', 'specify output directory for compiled assets (relative to project path)')
+  .description('compile project to static assets')
+  .action(function(projectPath, outputPath, program){
+
+    if(!program){
+      program    = outputPath
+      outputPath = null
+    }
+
+    projectPath = nodePath.resolve(process.cwd(), projectPath || "")
+
+    /**
+     * We deal with output path 3 different ways
+     *
+     *  1. second argument (relative to directory called in)
+     *  2. `--output` argument (relative to project root)
+     *  3. implicitly projectPath + "/www"
+     *
+     */
+
+    if(outputPath){
+      outputPath = nodePath.resolve(process.cwd(), (outputPath || program.output || ''))
+    }else{
+      outputPath = nodePath.resolve(projectPath, (program.output || "www"))
+    }
+
+    segundo.compile(projectPath, outputPath, function(errors, output){
+      if(errors) console.log(JSON.stringify(errors, null, 2))
+    })
+  })
+
+program
+  .command('search [dep]')
+  .description('search for dependencies (bower)')
+  .action(function() {
+    command = process.argv.slice(2);
+    segundo.doBower(command);
+  });
+
+program
+  .command('install [dep]')
+  .description('install dependencies (bower)')
+  .action(function() {
+    command = process.argv.slice(2);
+    segundo.doBower(command);
+  });
+
+program.command("*").action(program.help)
+program.parse(process.argv)
+
+if(program.args.length < 1){
+  program.help()
+}
